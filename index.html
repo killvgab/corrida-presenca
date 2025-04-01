@@ -22,7 +22,78 @@
         
         h1 { color: #2c3e50; }
         
+        /* Tela de Login */
+        .login-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin-top: -50px;
+        }
+        
+        .login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 300px;
+        }
+        
+        .login-box h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .login-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .login-btn:hover {
+            background: #45a049;
+        }
+        
+        .current-user {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-size: 0.9em;
+        }
+        
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #f44336;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        
         /* Seção da Corrida */
+        .content {
+            display: none; /* Inicialmente escondido */
+        }
+        
         .track { 
             display: flex; 
             flex-direction: column; 
@@ -199,20 +270,36 @@
     </style>
 </head>
 <body>
-    <h1>Corrida de Presença</h1>
+    <div class="login-container" id="loginContainer">
+        <div class="login-box">
+            <h2>Login</h2>
+            <p>Digite seu nome de usuário:</p>
+            <input type="text" class="login-input" id="usernameInput" placeholder="Ex: biel, gigi, mari, tay">
+            <button class="login-btn" id="loginBtn">Entrar</button>
+        </div>
+    </div>
     
-    <div class="track" id="raceTrack"></div>
-    
-    <div class="stats-container" id="statsContainer"></div>
-    
-    <button id="resetButton">Zerar Tudo</button>
-    
-    <div class="confirmation-dialog" id="confirmationDialog">
-        <p>Tem certeza que deseja zerar todo o progresso?</p>
-        <p>Esta ação não pode ser desfeita!</p>
-        <div class="confirmation-buttons">
-            <button id="confirmReset">Sim, zerar</button>
-            <button id="cancelReset">Cancelar</button>
+    <div class="content" id="content">
+        <div class="current-user" id="currentUserDisplay">
+            Usuário: <span id="currentUser"></span>
+            <button class="logout-btn" id="logoutBtn">(Sair)</button>
+        </div>
+        
+        <h1>Corrida de Presença</h1>
+        
+        <div class="track" id="raceTrack"></div>
+        
+        <div class="stats-container" id="statsContainer"></div>
+        
+        <button id="resetButton">Zerar Tudo</button>
+        
+        <div class="confirmation-dialog" id="confirmationDialog">
+            <p>Tem certeza que deseja zerar todo o progresso?</p>
+            <p>Esta ação não pode ser desfeita!</p>
+            <div class="confirmation-buttons">
+                <button id="confirmReset">Sim, zerar</button>
+                <button id="cancelReset">Cancelar</button>
+            </div>
         </div>
     </div>
 
@@ -227,7 +314,8 @@
         const allowedDays = [1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17, 22, 23, 24, 25, 28, 29, 30];
         const totalDays = allowedDays.length;
         
-        // Carrega os dados salvos
+        // Variáveis de estado
+        let currentUser = null;
         let progress = JSON.parse(localStorage.getItem('raceProgress')) || {};
         let lastCheckins = JSON.parse(localStorage.getItem('lastCheckins')) || {};
         let checkinHistory = JSON.parse(localStorage.getItem('checkinHistory')) || {};
@@ -238,6 +326,47 @@
             if (!progress[name]) progress[name] = 0;
             if (!checkinHistory[name]) checkinHistory[name] = [];
             if (!absenceCount[name]) absenceCount[name] = 0;
+        });
+        
+        // Elementos da interface
+        const loginContainer = document.getElementById('loginContainer');
+        const content = document.getElementById('content');
+        const currentUserDisplay = document.getElementById('currentUser');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const loginBtn = document.getElementById('loginBtn');
+        const usernameInput = document.getElementById('usernameInput');
+        
+        // Configura o botão de login
+        loginBtn.addEventListener('click', () => {
+            const username = usernameInput.value.trim().toLowerCase();
+            const validUsers = ['biel', 'gigi', 'mari', 'tay'];
+            
+            if (validUsers.includes(username)) {
+                currentUser = username;
+                currentUserDisplay.textContent = username.charAt(0).toUpperCase() + username.slice(1);
+                loginContainer.style.display = 'none';
+                content.style.display = 'block';
+                setupRace();
+            } else {
+                alert("Usuário inválido! Digite biel, gigi, mari ou tay");
+                usernameInput.focus();
+            }
+        });
+        
+        // Permite login com Enter
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loginBtn.click();
+            }
+        });
+        
+        // Configura o botão de logout
+        logoutBtn.addEventListener('click', () => {
+            currentUser = null;
+            usernameInput.value = '';
+            loginContainer.style.display = 'flex';
+            content.style.display = 'none';
+            usernameInput.focus();
         });
         
         function isAllowedDay() {
@@ -285,13 +414,18 @@
                             <span id="absence-${name}">${absenceCount[name]} faltas</span>
                         </div>
                     </div>
-                    <button id="checkin-${name}">Check-in</button>
+                    <button id="checkin-${name}" class="checkin-btn">Check-in</button>
                 `;
                 raceTrack.appendChild(runner);
 
                 // Verifica se já fez check-in hoje
                 if (lastCheckins[name] === today) {
                     document.getElementById(`checkin-${name}`).disabled = true;
+                }
+                
+                // Aplica regras de acesso
+                if (currentUser !== 'biel' && currentUser !== name.toLowerCase()) {
+                    document.getElementById(`checkin-${name}`).style.display = 'none';
                 }
                 
                 // Atualiza a barra de progresso
@@ -329,7 +463,13 @@
                 updateAbsenceMeter(name);
             });
             
-            // Configura o botão de reset
+            // Configura o botão de reset (só visível para admin)
+            if (currentUser !== 'biel') {
+                document.getElementById('resetButton').style.display = 'none';
+            } else {
+                document.getElementById('resetButton').style.display = 'block';
+            }
+            
             document.getElementById('resetButton').addEventListener('click', showResetConfirmation);
             document.getElementById('confirmReset').addEventListener('click', resetAllProgress);
             document.getElementById('cancelReset').addEventListener('click', hideResetConfirmation);
@@ -480,7 +620,10 @@
             alert("Todo o progresso foi zerado com sucesso!");
         }
         
-        setupRace();
+        // Foca no input quando a página carrega
+        window.onload = function() {
+            usernameInput.focus();
+        };
     </script>
 </body>
 </html>
